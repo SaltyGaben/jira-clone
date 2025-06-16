@@ -16,14 +16,13 @@ A modern Jira clone built with Nuxt 3, featuring a clean and intuitive interface
 -   🎯 Issue tracking
 -   👥 Team collaboration
 -   🎨 Modern UI with shadcn-vue components
--   📱 Responsive design
 
 ## 🛠️ Setup
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/jira-clone.git
+git clone https://github.com/SaltyGaben/jira-clone.git
 cd jira-clone
 ```
 
@@ -111,4 +110,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/yourusername/jira-clone/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/SaltyGaben/jira-clone/issues).
