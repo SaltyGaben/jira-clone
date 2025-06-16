@@ -1,75 +1,114 @@
-# Nuxt Minimal Starter
+# Jira Clone
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A modern Jira clone built with Nuxt 3, featuring a clean and intuitive interface for project management and issue tracking.
 
-## Setup
+## 🚀 Tech Stack
 
-Make sure to install dependencies:
+-   [Nuxt 3](https://nuxt.com/) - The Vue Framework
+-   [Supabase](https://supabase.com/) - Open source Firebase alternative
+-   [shadcn-vue](https://www.shadcn-vue.com/) - Re-usable components built with Radix Vue and Tailwind CSS
+-   [Tailwind CSS](https://tailwindcss.com/) - A utility-first CSS framework
+
+## ✨ Features
+
+-   🔐 Authentication with Supabase
+-   📋 Project management
+-   🎯 Issue tracking
+-   👥 Team collaboration
+-   🎨 Modern UI with shadcn-vue components
+-   📱 Responsive design
+
+## 🛠️ Setup
+
+1. Clone the repository:
 
 ```bash
-# npm
+git clone https://github.com/yourusername/jira-clone.git
+cd jira-clone
+```
+
+2. Install dependencies:
+
+```bash
+# Using npm
 npm install
 
-# pnpm
+# Using pnpm
 pnpm install
 
-# yarn
+# Using yarn
 yarn install
 
-# bun
+# Using bun
 bun install
 ```
 
-## Development Server
+3. Set up environment variables:
+   Create a `.env` file in the root directory and add your Supabase credentials:
 
-Start the development server on `http://localhost:3000`:
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_anon_key
+```
+
+## 🚀 Development
+
+Start the development server:
 
 ```bash
-# npm
+# Using npm
 npm run dev
 
-# pnpm
+# Using pnpm
 pnpm dev
 
-# yarn
+# Using yarn
 yarn dev
 
-# bun
+# Using bun
 bun run dev
 ```
 
-## Production
+The application will be available at `http://localhost:3000`
 
-Build the application for production:
+## 🏗️ Building for Production
+
+Build the application:
 
 ```bash
-# npm
+# Using npm
 npm run build
 
-# pnpm
+# Using pnpm
 pnpm build
 
-# yarn
+# Using yarn
 yarn build
 
-# bun
+# Using bun
 bun run build
 ```
 
-Locally preview production build:
+Preview the production build:
 
 ```bash
-# npm
+# Using npm
 npm run preview
 
-# pnpm
+# Using pnpm
 pnpm preview
 
-# yarn
+# Using yarn
 yarn preview
 
-# bun
+# Using bun
 bun run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/yourusername/jira-clone/issues).
