@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
 	compatibilityDate: '2025-05-15',
 	devtools: { enabled: true },
-	modules: ['@nuxtjs/supabase', 'shadcn-nuxt'],
+	modules: ['@nuxtjs/supabase', 'shadcn-nuxt', '@pinia/nuxt'],
 	css: ['~/assets/css/tailwind.css'],
 	vite: {
 		plugins: [tailwindcss()]
@@ -19,5 +19,8 @@ export default defineNuxtConfig({
 			saveRedirectToCookie: true,
 			exclude: ['/register']
 		}
+	},
+	pinia: {
+		storesDirs: ['./stores/**']
 	}
 })

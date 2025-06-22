@@ -78,11 +78,6 @@ const onSubmitUserSetup = handleSubmit(async (values) => {
 const goToLoginPage = () => {
     router.push('/login')
 }
-
-import { watch } from 'vue';
-watch(errors, (newErrors) => {
-    console.log('Validation Errors:', newErrors);
-}, { deep: true });
 </script>
 
 <template>

@@ -7,7 +7,7 @@ import { Navbar } from '#components';
         <header>
             <Navbar />
         </header>
-        <main class="w-full h-full">
+        <main class="w-full h-[calc(100%-4rem)]">
             <NuxtPage />
         </main>
     </div>
