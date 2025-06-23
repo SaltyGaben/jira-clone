@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DragendEventData, DragState, NodeDragEventData } from '@formkit/drag-and-drop'
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue'
 import type { Enums, Tables } from '~/types/database.types'
 
@@ -10,15 +11,42 @@ type TicketStatus = Enums<"ticket_status">;
 type Ticket = Tables<"tickets">;
 
 const allTickets = ref<Ticket[]>([]); // Your source of truth
+
 const todoItems = ref<Ticket[]>([]);
 const inProgressItems = ref<Ticket[]>([]);
 const inReviewItems = ref<Ticket[]>([]);
 const doneItems = ref<Ticket[]>([]);
 
-const [todoRef, todoList] = useDragAndDrop(todoItems.value, { group: "todoList" });
-const [inProgressRef, inProgressList] = useDragAndDrop(inProgressItems.value, { group: "todoList" });
-const [inReviewRef, inReviewList] = useDragAndDrop(inReviewItems.value, { group: "todoList" });
-const [doneRef, doneList] = useDragAndDrop(doneItems.value, { group: "todoList" });
+const updateStatus = async (
+    data: DragendEventData<Ticket>,
+) => {
+    const ticket = data.draggedNode.data.value
+
+    const newStatus = data.parent.el.id as TicketStatus;
+
+    console.log("ticket: ", ticket)
+    if (!ticket || ticket.ticket_status === newStatus) return;
+
+    try {
+        const { error } = await supabase
+            .from('tickets')
+            .update({ ticket_status: newStatus })
+            .eq('id', ticket.id);
+
+        if (error) throw error;
+
+        ticket.ticket_status = newStatus;
+    } catch (err) {
+        console.error('Failed to update ticket status:', err);
+    }
+};
+
+
+const [todoRef, todoList] = useDragAndDrop<Ticket>(todoItems.value, { group: "todoList", onDragend: updateStatus as any });
+const [inProgressRef, inProgressList] = useDragAndDrop<Ticket>(inProgressItems.value, { group: "todoList", onDragend: updateStatus as any });
+const [inReviewRef, inReviewList] = useDragAndDrop<Ticket>(inReviewItems.value, { group: "todoList", onDragend: updateStatus as any });
+const [doneRef, doneList] = useDragAndDrop<Ticket>(doneItems.value, { group: "todoList", onDragend: updateStatus as any });
+
 
 const listRefs: Record<TicketStatus, Ref<HTMLElement | undefined>> = {
     todo: todoRef,
@@ -108,7 +136,8 @@ watch(() => userStore.boardId, async (boardId) => {
             </CardHeader>
 
             <CardContent class="px-2 h-full">
-                <ul :ref="(el) => (listRefs[status].value = el as HTMLElement)" class="h-full flex flex-col gap-2">
+                <ul :ref="(el) => (listRefs[status].value = el as HTMLElement)" :id="status"
+                    class="h-full flex flex-col gap-2">
                     <li v-for="ticket in itemsByStatus[status].value" :key="ticket.id">
                         <Ticket :ticket="ticket" />
                     </li>
