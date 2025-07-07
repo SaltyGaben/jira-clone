@@ -1,40 +1,24 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
-import { CardContent } from '~/components/ui/card'
-import { Input } from '~/components/ui/input'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
-import { Loader2, Eye, EyeOff } from 'lucide-vue-next'
-import * as z from 'zod'
+import { z } from 'zod'
 import { toast } from 'vue-sonner'
-
-const user = useSupabaseUser()
-const redirectInfo = useSupabaseCookieRedirect()
+import { Loader2 } from 'lucide-vue-next'
 
 definePageMeta({
     layout: 'no-navbar',
 })
 
-watch(user, () => {
-    if (user.value) {
-        // Get redirect path, and clear it from the cookie
-        const path = redirectInfo.pluck()
-        // Redirect to the saved path, or fallback to home
-        return navigateTo(path || '/')
-    }
-}, { immediate: true })
-
-const supabase = useSupabaseClient()
 const router = useRouter()
+const supabase = useSupabaseClient()
 
-const loading = ref(false)
+
 const isPasswordVisible = ref(false)
+const loading = ref(false)
 
-const userSetupFormSchema = toTypedSchema(z.object({
-    email: z.string().email(),
+const passwordResetFormSchema = toTypedSchema(z.object({
     password: z.string().min(6, 'Password must be at least 6 characters long.'),
     confirmPassword: z.string(),
-    displayName: z.string()
 })
     .refine((data) => data.password === data.confirmPassword, {
         message: "Passwords don't match",
@@ -42,61 +26,36 @@ const userSetupFormSchema = toTypedSchema(z.object({
     }))
 
 const { isFieldDirty, handleSubmit, errors } = useForm({
-    validationSchema: userSetupFormSchema
+    validationSchema: passwordResetFormSchema
 })
 
-const onSubmitUserSetup = handleSubmit(async (values) => {
+const onSubmitPasswordReset = handleSubmit(async (values) => {
     loading.value = true
 
-    try {
-        const { error } = await supabase.auth.signUp({
-            email: values.email,
-            password: values.password,
-            options: {
-                data: {
-                    display_name: values.displayName
-                }
-            }
+    const { data, error } = await supabase.auth.updateUser({
+        password: values.password
+    })
+
+    if (error) {
+        console.error('Password reset error:', error.message)
+        toast.error('Password reset error', {
+            description: error.message
         })
-
-        if (error) {
-            console.error('Profile update error:', error.message)
-            toast.error('Profile update error', {
-                description: error.message
-            })
-        } else {
-            router.push('/')
-        }
-    } catch (err) {
-        toast.error('An unexpected error occurred during profile update.')
-    } finally {
-        toast.success('Account has been created successfully. Welcome!')
-        loading.value = false
     }
-})
 
-const goToLoginPage = () => {
+    loading.value = false
     router.push('/login')
-}
+})
 </script>
 
 <template>
     <div class="bg-background h-screen container mx-auto justify-center items-center flex max-w-90 mb-40">
-        <Card class="w-full max-w-80">
+        <Card class="w-full">
             <CardHeader>
-                <CardTitle class="text-2xl">Register</CardTitle>
+                <CardTitle class="text-2xl">Login</CardTitle>
             </CardHeader>
-            <form @submit.prevent="onSubmitUserSetup">
+            <form @submit.prevent="onSubmitPasswordReset">
                 <CardContent class="flex flex-col gap-4">
-                    <FormField v-slot="{ componentField }" name="email" :validate-on-blur="!isFieldDirty">
-                        <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                                <Input type="text" placeholder="Email" v-bind="componentField" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
                     <FormField v-slot="{ componentField }" name="password" :validate-on-blur="!isFieldDirty">
                         <FormItem>
                             <FormLabel>Password</FormLabel>
@@ -133,25 +92,13 @@ const goToLoginPage = () => {
                             <FormMessage />
                         </FormItem>
                     </FormField>
-                    <FormField v-slot="{ componentField }" name="displayName" :validate-on-blur="!isFieldDirty">
-                        <FormItem>
-                            <FormLabel>Your display name</FormLabel>
-                            <FormControl class="">
-                                <Input type="text" placeholder="Name" v-bind="componentField" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </FormField>
                 </CardContent>
                 <CardFooter class="flex flex-col gap-2 mt-6">
                     <Button v-if="loading" type="submit" disabled class="w-full">
                         <Loader2 class="w-4 h-4 mr-2 animate-spin" />
                         Loading...
                     </Button>
-                    <Button v-else type="submit" class="w-full">Register</Button>
-                    <Button variant="ghost" class="hover:bg-transparent" @click="goToLoginPage">
-                        <p class="text-xs underline hover:cursor-pointer">Already have an account? Login here</p>
-                    </Button>
+                    <Button v-else type="submit" class="w-full">Reset Password</Button>
                 </CardFooter>
             </form>
         </Card>

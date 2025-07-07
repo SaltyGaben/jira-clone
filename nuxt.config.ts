@@ -17,7 +17,7 @@ export default defineNuxtConfig({
 			login: '/login',
 			callback: '/',
 			saveRedirectToCookie: true,
-			exclude: ['/register']
+			exclude: ['/register', '/password/reset', '/password/update']
 		}
 	},
 	pinia: {

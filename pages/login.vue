@@ -16,7 +16,7 @@ const router = useRouter()
 
 definePageMeta({
     layout: 'no-navbar',
-});
+})
 
 watch(user, () => {
     if (user.value) {
@@ -64,6 +64,10 @@ const onSubmitEmail = handleSubmit(async (values) => {
 const goToRegisterPage = () => {
     router.push('/register')
 }
+
+const goToForgotPasswordPage = () => {
+    router.push('/password/reset')
+}
 </script>
 
 <template>
@@ -108,11 +112,11 @@ const goToRegisterPage = () => {
                         Loading...
                     </Button>
                     <Button v-else type="submit" class="w-full">Login</Button>
-                    <Button variant="ghost" class="hover:bg-transparent" @click="goToRegisterPage">
-                        <p class="text-xs underline hover:cursor-pointer">Don't have an
-                            account?
-                            Register here</p>
-                    </Button>
+                    <p class="text-xs underline hover:cursor-pointer mt-2" @click="goToRegisterPage">Don't have an
+                        account?
+                        Register here</p>
+                    <p class="text-xs underline hover:cursor-pointer" @click="goToForgotPasswordPage">Forgot your
+                        password?</p>
                 </CardFooter>
             </form>
         </Card>

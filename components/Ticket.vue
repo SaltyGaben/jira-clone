@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { type Tables, type Enums } from '~/types/database.types';
+import { type Tables, type Enums } from '~/types/database.types'
 
-type Ticket = Tables<"tickets">;
+type Ticket = Tables<"tickets">
 
 interface TicketProps {
-    ticket: Ticket;
+    ticket: Ticket
 }
 
 const props = defineProps<TicketProps>()

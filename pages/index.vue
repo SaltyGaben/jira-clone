@@ -7,45 +7,45 @@ const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const userStore = useUserStore()
 
-type TicketStatus = Enums<"ticket_status">;
-type Ticket = Tables<"tickets">;
+type TicketStatus = Enums<"ticket_status">
+type Ticket = Tables<"tickets">
 
-const allTickets = ref<Ticket[]>([]); // Your source of truth
+const allTickets = ref<Ticket[]>([])
 
-const todoItems = ref<Ticket[]>([]);
-const inProgressItems = ref<Ticket[]>([]);
-const inReviewItems = ref<Ticket[]>([]);
-const doneItems = ref<Ticket[]>([]);
+const todoItems = ref<Ticket[]>([])
+const inProgressItems = ref<Ticket[]>([])
+const inReviewItems = ref<Ticket[]>([])
+const doneItems = ref<Ticket[]>([])
 
 const updateStatus = async (
     data: DragendEventData<Ticket>,
 ) => {
     const ticket = data.draggedNode.data.value
 
-    const newStatus = data.parent.el.id as TicketStatus;
+    const newStatus = data.parent.el.id as TicketStatus
 
     console.log("ticket: ", ticket)
-    if (!ticket || ticket.ticket_status === newStatus) return;
+    if (!ticket || ticket.ticket_status === newStatus) return
 
     try {
         const { error } = await supabase
             .from('tickets')
             .update({ ticket_status: newStatus })
-            .eq('id', ticket.id);
+            .eq('id', ticket.id)
 
-        if (error) throw error;
+        if (error) throw error
 
-        ticket.ticket_status = newStatus;
+        ticket.ticket_status = newStatus
     } catch (err) {
-        console.error('Failed to update ticket status:', err);
+        console.error('Failed to update ticket status:', err)
     }
-};
+}
 
 
-const [todoRef, todoList] = useDragAndDrop<Ticket>(todoItems.value, { group: "todoList", onDragend: updateStatus as any });
-const [inProgressRef, inProgressList] = useDragAndDrop<Ticket>(inProgressItems.value, { group: "todoList", onDragend: updateStatus as any });
-const [inReviewRef, inReviewList] = useDragAndDrop<Ticket>(inReviewItems.value, { group: "todoList", onDragend: updateStatus as any });
-const [doneRef, doneList] = useDragAndDrop<Ticket>(doneItems.value, { group: "todoList", onDragend: updateStatus as any });
+const [todoRef, todoList] = useDragAndDrop<Ticket>(todoItems.value, { group: "todoList", onDragend: updateStatus as any })
+const [inProgressRef, inProgressList] = useDragAndDrop<Ticket>(inProgressItems.value, { group: "todoList", onDragend: updateStatus as any })
+const [inReviewRef, inReviewList] = useDragAndDrop<Ticket>(inReviewItems.value, { group: "todoList", onDragend: updateStatus as any })
+const [doneRef, doneList] = useDragAndDrop<Ticket>(doneItems.value, { group: "todoList", onDragend: updateStatus as any })
 
 
 const listRefs: Record<TicketStatus, Ref<HTMLElement | undefined>> = {
@@ -53,21 +53,21 @@ const listRefs: Record<TicketStatus, Ref<HTMLElement | undefined>> = {
     in_progress: inProgressRef,
     in_review: inReviewRef,
     done: doneRef,
-};
+}
 
 const itemsByStatus: Record<TicketStatus, Ref<Ticket[]>> = {
     todo: todoList,
     in_progress: inProgressList,
     in_review: inReviewList,
     done: doneList,
-};
+}
 
 const listsByStatus = {
     todo: todoItems,
     in_progress: inProgressItems,
     in_review: inReviewItems,
     done: doneItems,
-};
+}
 
 const statusNames: Record<TicketStatus, String> = {
     todo: 'Todo',
@@ -76,7 +76,7 @@ const statusNames: Record<TicketStatus, String> = {
     done: 'Done',
 }
 
-const columnStatuses: TicketStatus[] = ["todo", "in_progress", "in_review", "done"];
+const columnStatuses: TicketStatus[] = ["todo", "in_progress", "in_review", "done"]
 const isBoardSelected = ref(true)
 
 onMounted(async () => {
@@ -99,7 +99,7 @@ const getTickets = async () => {
             .eq('board_id', userStore.boardId)
 
         if (fetchTeamsError) {
-            throw fetchTeamsError;
+            throw fetchTeamsError
         }
 
         console.log('data', data)
@@ -108,11 +108,11 @@ const getTickets = async () => {
 
         allTickets.value.forEach((ticket) => {
             if (ticket.ticket_status && listsByStatus[ticket.ticket_status]) {
-                listsByStatus[ticket.ticket_status].value.push(ticket);
+                listsByStatus[ticket.ticket_status].value.push(ticket)
             }
-        });
+        })
     } catch (err: any) {
-        console.error('Error fetching available teams:', err.message);
+        console.error('Error fetching available teams:', err.message)
     }
 }
 
@@ -127,7 +127,7 @@ watch(() => userStore.boardId, async (boardId) => {
 </script>
 
 <template>
-    <div v-if="isBoardSelected" class="h-full w-full flex flex-row justify-evenly p-8 gap-8">
+    <div v-if="isBoardSelected" class="h-full w-full flex flex-row justify-evenly p-8 gap-3">
         <Card v-for="status in columnStatuses" :key="status" class="h-full w-full bg-muted shadow-none border-none">
             <CardHeader>
                 <CardTitle class="place-self-center text-2xl">
