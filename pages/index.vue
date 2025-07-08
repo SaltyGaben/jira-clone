@@ -2,10 +2,12 @@
 import type { DragendEventData, DragState, NodeDragEventData } from '@formkit/drag-and-drop'
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue'
 import type { Enums, Tables } from '~/types/database.types'
+import { useTicketAdded } from "~/composables/useTicketAdded";
 
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const userStore = useUserStore()
+const ticketAddedFlag = useTicketAdded();
 
 type TicketStatus = Enums<"ticket_status">
 type Ticket = Tables<"tickets">
@@ -104,6 +106,12 @@ const getTickets = async () => {
 
         console.log('data', data)
 
+        allTickets.value = []
+        todoItems.value.splice(0, todoItems.value.length)
+        inProgressItems.value.splice(0, inProgressItems.value.length)
+        inReviewItems.value.splice(0, inReviewItems.value.length)
+        doneItems.value.splice(0, doneItems.value.length)
+
         allTickets.value = data.map(ticket => ticket) as Tables<'tickets'>[]
 
         allTickets.value.forEach((ticket) => {
@@ -111,6 +119,8 @@ const getTickets = async () => {
                 listsByStatus[ticket.ticket_status].value.push(ticket)
             }
         })
+        console.log('ticket gotten');
+
     } catch (err: any) {
         console.error('Error fetching available teams:', err.message)
     }
@@ -124,6 +134,18 @@ watch(() => userStore.boardId, async (boardId) => {
     isBoardSelected.value = true
     getTickets()
 })
+
+watch(ticketAddedFlag, async (newValue, oldValue) => {
+    console.log('in watch')
+    console.log('newValue: ', newValue)
+    console.log('oldValue: ', oldValue)
+    // The initial value is 0, so this prevents it from running on page load
+    if (newValue !== 0) {
+        console.log('get tickets');
+
+        await getTickets()
+    }
+});
 </script>
 
 <template>
