@@ -3,14 +3,15 @@ import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
 import { Plus } from 'lucide-vue-next'
 import { Textarea } from '@/components/ui/textarea'
-import type { Database, Enums, Tables } from '~/database.types'
+import type { Database, Enums, Tables } from '~/types/database.types'
+import { statusNames, priorityNames, typeNames } from '~/lib/records'
 
-import { useTicketAdded } from "~/composables/useTicketAdded";
-import { tr } from 'zod/v4/locales'
+import { useTicketAdded, useTickets } from "~/composables/useTickets";
+import { useUsers } from '~/composables/useUsers'
 
 const ticketAddedFlag = useTicketAdded();
-
-const supabase = useSupabaseClient()
+const { getEpicTickets, saveTicket } = useTickets()
+const { getTeamMembersFromTeamId } = useUsers()
 const user = useSupabaseUser()
 const userStore = useUserStore()
 
@@ -20,26 +21,10 @@ type TicketInsert = Database['public']['Tables']['tickets']['Insert']
 type TicketStatus = Enums<"ticket_status">
 type TicketPriority = Enums<"ticket_priority">
 type TicketType = Enums<'ticket_type'>
+
 const ticketStatuses: TicketStatus[] = ["todo", "in_progress", "in_review", "done"]
 const ticketPriorities: TicketPriority[] = ['low', 'medium', 'high', 'critical']
-const ticketTypes: TicketType[] = ['bug', 'epic', 'task']
-const statusNames: Record<TicketStatus, String> = {
-    todo: 'Todo',
-    in_progress: 'In Progress',
-    in_review: 'In Review',
-    done: 'Done',
-}
-const priorityNames: Record<TicketPriority, String> = {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High',
-    critical: 'Critical',
-}
-const typeNames: Record<TicketType, String> = {
-    bug: 'Bug',
-    epic: 'Epic',
-    task: 'Task',
-}
+const ticketTypesArray: TicketType[] = ['bug', 'epic', 'task']
 
 const isDialogOpen = ref(false)
 const teamMembers = ref<Users[]>([])
@@ -47,13 +32,13 @@ const epicTickets = ref<Ticket[]>([])
 
 const ticketSchema = toTypedSchema(z.object({
     title: z.string().min(1, 'Title is required'),
-    description: z.string().max(200, 'Maximum of 200 characters allowed'),
+    description: z.string().max(200, 'Maximum of 200 characters allowed').optional().nullable(),
     status: z.enum(['todo', 'in_progress', 'in_review', 'done']),
     priority: z.enum(['low', 'medium', 'high', 'critical']),
     type: z.enum(['bug', 'epic', 'task']),
-    epic: z.string().optional(),
-    points: z.number().optional(),
-    assignee: z.string().optional(),
+    epic: z.string().optional().nullable(),
+    points: z.number().optional().nullable(),
+    assignee: z.string().optional().nullable(),
 }))
 
 const onSubmitTicket = (async (values: any) => {
@@ -67,23 +52,17 @@ const onSubmitTicket = (async (values: any) => {
         assigned_user: values.assignee,
         board_id: userStore.boardId,
         created_by_user: user.value?.id,
-        epic_ticket_id: values.epic,
+        epic_ticket_id: values.epic ?? null
     }
 
     try {
-        const { data, error } = await supabase
-            .from('tickets')
-            .insert([ticket])
-            .select()
-
-        if (error) {
-            throw error
+        console.log('ticket to save:', ticket);
+        await saveTicket(ticket)
+    } catch (error: any) {
+        if (error.statusCode === 404) {
+            throw createError({ statusCode: 404, statusMessage: `Could not save ticket`, fatal: true });
         }
-
-        console.log('ticket saved: ', data)
-    }
-    catch (err: any) {
-        console.error(err)
+        throw createError({ statusCode: 500, statusMessage: error.message, fatal: true });
     }
 
     ticketAddedFlag.value = Date.now();
@@ -91,57 +70,35 @@ const onSubmitTicket = (async (values: any) => {
     console.log(ticketAddedFlag.value)
 })
 
-onMounted(async () => {
-    await fetchUsersFromTeamMembers()
-    await fetchEpicTickets()
+const { data: initialTeamMembers } = await useAsyncData('team-members', async () => {
+    try {
+        return await getTeamMembersFromTeamId(userStore.teamId)
+    } catch (error: any) {
+        if (error.statusCode === 404) {
+            throw createError({ statusCode: 404, statusMessage: `Team members not found`, fatal: true });
+        }
+        throw createError({ statusCode: 500, statusMessage: error.message, fatal: true });
+    }
 })
 
-const fetchUsersFromTeamMembers = async () => {
-    const teamId = userStore.teamId
-
-    try {
-        const { data, error } = await supabase
-            .from('team_members')
-            .select('users(*)')
-            .eq('team_id', teamId)
-
-        if (error) {
-            throw error
+const { data: initialEpicTickets } = await useAsyncData(
+    `epic-tickets`,
+    async () => {
+        try {
+            return await getEpicTickets()
+        } catch (error: any) {
+            if (error.statusCode === 404) {
+                throw createError({ statusCode: 404, statusMessage: `Epics not found`, fatal: true });
+            }
+            throw createError({ statusCode: 500, statusMessage: error.message, fatal: true });
         }
-        teamMembers.value = (data || []).map(item => item.users).filter(Boolean) as Tables<'users'>[]
-
-    } catch (err: any) {
-        console.error(err)
     }
-}
+)
 
-const fetchEpicTickets = async () => {
-    try {
-        const { data, error } = await supabase
-            .from('tickets')
-            .select('*')
-            .eq('ticket_type', 'epic')
-
-        if (error) {
-            throw error
-        }
-        if (data) {
-            epicTickets.value.push(
-                ...data.map((ticket: any) => ({
-                    story_points: null,
-                    ticket_id_str: null,
-                    ticket_num: null,
-                    ticket_prefix: null,
-                    ticket_priority: null,
-                    ticket_type: null,
-                    ...ticket
-                }))
-            )
-        }
-    } catch (err: any) {
-        console.error(err)
-    }
-}
+watchEffect(() => {
+    epicTickets.value = initialEpicTickets.value ?? []
+    teamMembers.value = initialTeamMembers.value ?? []
+})
 </script>
 
 <template>
@@ -224,7 +181,7 @@ const fetchEpicTickets = async () => {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                                <SelectItem v-for="type in ticketTypes" :value="type">{{
+                                                <SelectItem v-for="type in ticketTypesArray" :value="type">{{
                                                     typeNames[type] }}</SelectItem>
                                             </SelectGroup>
                                         </SelectContent>

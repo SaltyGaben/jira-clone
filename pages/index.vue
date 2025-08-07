@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import type { DragendEventData, DragState, NodeDragEventData } from '@formkit/drag-and-drop'
+import type { DragendEventData } from '@formkit/drag-and-drop'
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue'
 import type { Enums, Tables } from '~/types/database.types'
-import { useTicketAdded } from "~/composables/useTicketAdded";
+import { useTicketAdded, useTickets } from "~/composables/useTickets";
+import { statusNames } from '~/lib/records'
 
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const userStore = useUserStore()
 const ticketAddedFlag = useTicketAdded();
+const { getAllTickets } = useTickets()
 
 type TicketStatus = Enums<"ticket_status">
 type Ticket = Tables<"tickets">
@@ -71,13 +73,6 @@ const listsByStatus = {
     done: doneItems,
 }
 
-const statusNames: Record<TicketStatus, String> = {
-    todo: 'Todo',
-    in_progress: 'In Progress',
-    in_review: 'In Review',
-    done: 'Done',
-}
-
 const columnStatuses: TicketStatus[] = ["todo", "in_progress", "in_review", "done"]
 const isBoardSelected = ref(true)
 
@@ -95,16 +90,7 @@ const getTickets = async () => {
     }
 
     try {
-        const { data, error: fetchTeamsError } = await supabase
-            .from('tickets')
-            .select('*')
-            .eq('board_id', userStore.boardId)
-
-        if (fetchTeamsError) {
-            throw fetchTeamsError
-        }
-
-        console.log('data', data)
+        const data = await getAllTickets()
 
         allTickets.value = []
         todoItems.value.splice(0, todoItems.value.length)
@@ -112,7 +98,7 @@ const getTickets = async () => {
         inReviewItems.value.splice(0, inReviewItems.value.length)
         doneItems.value.splice(0, doneItems.value.length)
 
-        allTickets.value = data.map(ticket => ticket) as Tables<'tickets'>[]
+        allTickets.value = data ?? []
 
         allTickets.value.forEach((ticket) => {
             if (ticket.ticket_status && listsByStatus[ticket.ticket_status]) {
@@ -120,9 +106,8 @@ const getTickets = async () => {
             }
         })
         console.log('ticket gotten');
-
-    } catch (err: any) {
-        console.error('Error fetching available teams:', err.message)
+    } catch (error) {
+        console.error('Failed to load tickets:', error);
     }
 }
 
@@ -136,16 +121,21 @@ watch(() => userStore.boardId, async (boardId) => {
 })
 
 watch(ticketAddedFlag, async (newValue, oldValue) => {
-    console.log('in watch')
-    console.log('newValue: ', newValue)
-    console.log('oldValue: ', oldValue)
-    // The initial value is 0, so this prevents it from running on page load
     if (newValue !== 0) {
         console.log('get tickets');
 
         await getTickets()
     }
 });
+
+
+const getEpicName = (epicId: string | null) => {
+    if (!epicId) return
+
+    const epicTicket = allTickets.value.find(ticket => ticket.id === epicId)
+    return epicTicket ? epicTicket.title : undefined
+}
+
 </script>
 
 <template>
@@ -157,14 +147,16 @@ watch(ticketAddedFlag, async (newValue, oldValue) => {
                 </CardTitle>
             </CardHeader>
 
-            <CardContent class="px-2 h-full">
+
+            <CardContent class="px-2 h-full overflow-auto">
                 <ul :ref="(el) => (listRefs[status].value = el as HTMLElement)" :id="status"
                     class="h-full flex flex-col gap-2">
                     <li v-for="ticket in itemsByStatus[status].value" :key="ticket.id">
-                        <Ticket :ticket="ticket" />
+                        <Ticket :ticket="ticket" :epic-name="getEpicName(ticket.epic_ticket_id)" />
                     </li>
                 </ul>
             </CardContent>
+
         </Card>
     </div>
     <div v-else class="flex items-center justify-center">

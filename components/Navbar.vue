@@ -1,116 +1,117 @@
 <script setup lang="ts">
 import { useUserStore } from '~/stores/UserStore'
-import type { Database, Tables } from '~/types/database.types'
 import AddTicketButton from './AddTicketButton.vue'
+import { User } from 'lucide-vue-next'
 
 const userStore = useUserStore()
-const supabase = useSupabaseClient<Database>()
+const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const router = useRouter()
 
-const availableTeams = ref<Tables<'teams'>[]>([])
 const selectedTeamId = ref<string | null>(null)
-const availableBoards = ref<Tables<'boards'>[]>([])
 const selectedBoardId = ref<string | null>(null)
 
-onMounted(() => {
-    if (userStore.teamId) {
-        selectedTeamId.value = userStore.teamId
+const { getUserTeams } = useUsers()
+const { fetchBoardsForTeam } = useBoards()
+
+const { data: availableTeams } = await useAsyncData(
+    'user-teams',
+    async () => {
+        try {
+            return await getUserTeams()
+        } catch (err: any) {
+            console.error('Failed to fetch initial teams:', err.message)
+            throw err
+        }
     }
-    if (userStore.boardId) {
-        selectedBoardId.value = userStore.boardId
-    }
-    fetchAvailableTeams()
+)
+
+onMounted(async () => {
+    await userStore.validateStoredIds()
 })
 
-const fetchAvailableTeams = async () => {
-    if (!user.value) {
-        console.log("No user found")
-        return
+watchEffect(() => {
+    if (availableTeams.value && availableTeams.value.length > 0) {
+        selectedTeamId.value = userStore.teamId || availableTeams.value[0]?.id || null;
+    } else if (availableTeams.value && availableTeams.value.length === 0) {
+        selectedTeamId.value = null;
     }
+});
 
-    try {
-        const { data, error: fetchTeamsError } = await supabase
-            .from('team_members')
-            .select('team:teams(*)')
-            .eq('user_id', user.value.id)
-
-        if (fetchTeamsError) {
-            throw fetchTeamsError
+const { data: availableBoards } = useAsyncData(
+    () => `boards-for-${selectedTeamId.value}`,
+    async () => {
+        try {
+            return await fetchBoardsForTeam(selectedTeamId.value!);
+        } catch (err: any) {
+            console.error('Failed to fetch boards for team:', err.message)
+            throw err
         }
-
-        availableTeams.value = data.map(member => member.team) as Tables<'teams'>[]
-    } catch (err: any) {
-        console.error('Error fetching available teams:', err.message)
+    },
+    {
+        watch: [selectedTeamId],
+        default: () => [],
     }
-}
+);
 
-const getBoardsForTeam = async (teamId: string) => {
-    if (!user.value || !teamId) {
-        console.log("No user or team id found")
-        return
-    }
-
-    try {
-        const { data, error: fetchBoardError } = await supabase
-            .from('boards')
-            .select('*')
-            .eq('team_id', teamId)
-
-        if (fetchBoardError) {
-            throw fetchBoardError
+// Separate watchEffect for board selection to ensure it runs after boards are loaded
+watchEffect(() => {
+    if (selectedTeamId.value && userStore.boardId && availableBoards.value) {
+        // Check if the stored boardId exists in the available boards
+        const boardExists = availableBoards.value.some(board => board.id === userStore.boardId);
+        if (boardExists) {
+            selectedBoardId.value = userStore.boardId;
+        } else {
+            // If the stored board doesn't exist, select the first available board
+            selectedBoardId.value = availableBoards.value[0]?.id || null;
         }
-
-        availableBoards.value = data.map(board => board) as Tables<'boards'>[]
+    } else if (!selectedTeamId.value || !userStore.boardId) {
+        selectedBoardId.value = null;
     }
-    catch (err: any) {
-        console.error('Error fetching available boards:', err.message)
-    }
-}
+});
 
-const fetchTeamMembersForTeam = async (teamId: string) => {
-    if (!user.value || !teamId) {
-        console.log("No user or team id found")
-        return
-    }
-
-    try {
-        const { data, error: fetchTeamMemberError } = await supabase
-            .from('team_members')
-            .select('*')
-            .eq('team_id', teamId)
-
-        if (fetchTeamMemberError) {
-            throw fetchTeamMemberError
-        }
-
-        console.log('member', data)
-        userStore.teamMembers = data
-    }
-    catch (err: any) {
-        console.error('Error fetching team members:', err.message)
-    }
-}
-
-watch(selectedTeamId, async (teamId) => {
-    if (teamId) {
-        userStore.teamId = teamId
-        await getBoardsForTeam(teamId)
-        await fetchTeamMembersForTeam(teamId)
+watch(selectedTeamId, async (newTeamId) => {
+    if (newTeamId) {
+        userStore.teamId = newTeamId;
+        // Clear the board selection when team changes - it will be set by the watchEffect
+        selectedBoardId.value = null;
     } else {
-        availableBoards.value = []
+        selectedBoardId.value = null;
     }
-})
+}, { immediate: true });
 
-watch(selectedBoardId, async (boardId) => {
-    if (boardId) {
-        userStore.boardId = boardId
+watch(selectedBoardId, (newBoardId) => {
+    if (newBoardId) {
+        userStore.boardId = newBoardId;
     }
-})
+});
+
+// Watch for changes in availableBoards to update board selection
+watch(availableBoards, (newBoards) => {
+    if (newBoards && newBoards.length > 0 && userStore.boardId) {
+        // Check if the stored boardId exists in the new boards
+        const boardExists = newBoards.some(board => board.id === userStore.boardId);
+        if (boardExists) {
+            selectedBoardId.value = userStore.boardId;
+        } else {
+            // If the stored board doesn't exist, select the first available board
+            selectedBoardId.value = newBoards[0]?.id || null;
+        }
+    }
+});
+
+const isLogoutDialogOpen = ref(false)
+
+const logout = async () => {
+    userStore.clearStoredIds()
+    await supabase.auth.signOut()
+    router.push('/login')
+}
 </script>
 
 <template>
     <nav class="bg-background flex flex-row items-center px-4 h-16 border-b justify-between">
-        <h1 class="text-xl">Jira Clone</h1>
+        <h1 class="text-xl hover:cursor-pointer" @click="router.push('/')">Jira Clone</h1>
         <div class="flex flex-row gap-4">
             <AddTicketButton />
             <Select v-model="selectedTeamId">
@@ -137,6 +138,33 @@ watch(selectedBoardId, async (boardId) => {
                     </SelectGroup>
                 </SelectContent>
             </Select>
+            <DropdownMenu>
+                <DropdownMenuTrigger>
+                    <User class="bg-muted rounded-4xl h-10 w-10 p-2" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>Profile</DropdownMenuItem>
+                    <DropdownMenuItem @click="isLogoutDialogOpen = true">
+                        Logout
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     </nav>
+
+    <Dialog v-model:open="isLogoutDialogOpen">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Logout</DialogTitle>
+                <DialogDescription>
+                    Are you sure you want to logout?
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button @click="logout">Logout</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
