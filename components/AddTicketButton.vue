@@ -7,11 +7,9 @@ import type { Database, Enums, Tables } from '~/types/database.types'
 import { statusNames, priorityNames, typeNames } from '~/lib/records'
 
 import { useTicketAdded, useTickets } from "~/composables/useTickets";
-import { useUsers } from '~/composables/useUsers'
 
 const ticketAddedFlag = useTicketAdded();
 const { getEpicTickets, saveTicket } = useTickets()
-const { getTeamMembersFromTeamId } = useUsers()
 const user = useSupabaseUser()
 const userStore = useUserStore()
 
@@ -70,16 +68,8 @@ const onSubmitTicket = (async (values: any) => {
     console.log(ticketAddedFlag.value)
 })
 
-const { data: initialTeamMembers } = await useAsyncData('team-members', async () => {
-    try {
-        return await getTeamMembersFromTeamId(userStore.teamId)
-    } catch (error: any) {
-        if (error.statusCode === 404) {
-            throw createError({ statusCode: 404, statusMessage: `Team members not found`, fatal: true });
-        }
-        throw createError({ statusCode: 500, statusMessage: error.message, fatal: true });
-    }
-})
+const { useTeamMembersData } = useTeamMembers()
+const { data: initialTeamMembers } = await useTeamMembersData()
 
 const { data: initialEpicTickets } = await useAsyncData(
     `epic-tickets`,

@@ -11,9 +11,8 @@ import { priorityNames, statusNames, typeNames } from '~/lib/records'
 const route = useRoute()
 const router = useRouter()
 const user = useSupabaseUser()
-const userStore = useUserStore()
 const { getTicketById, getComments, saveComment, updateTicket } = useTickets()
-const { getUserById, getTeamMembersFromTeamId } = useUsers()
+const { getUserById } = useUsers()
 
 const ticketId = route.params.id as string
 const isEditing = ref(false)
@@ -77,25 +76,8 @@ const { data: initialTicketComments } = await useAsyncData(
     }
 )
 
-// Validate IDs and fetch team members after validation
-const { data: teamMembers } = await useAsyncData(
-    'team-members',
-    async () => {
-        // First validate the stored IDs
-        await userStore.validateStoredIds()
-
-        // Only fetch team members if we have a valid teamId
-        if (userStore.teamId) {
-            try {
-                return await getTeamMembersFromTeamId(userStore.teamId)
-            } catch (error: any) {
-                console.error('Failed to fetch team members:', error)
-                return []
-            }
-        }
-        return []
-    }
-)
+const { useTeamMembersData } = useTeamMembers()
+const { data: teamMembers } = await useTeamMembersData()
 
 watchEffect(() => {
     if (initialTicket.value) {
