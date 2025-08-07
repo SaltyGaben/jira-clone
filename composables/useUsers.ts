@@ -21,10 +21,7 @@ export function useUsers() {
 		if (!user.value) {
 			throw createError({ statusCode: 401, statusMessage: 'Unauthorized: User not logged in' })
 		}
-		const { data, error } = await supabase
-			.from('team_members')
-			.select('team:teams(*)') // Select the nested team object
-			.eq('user_id', user.value.id)
+		const { data, error } = await supabase.from('team_members').select('team:teams(*)').eq('user_id', user.value.id)
 
 		if (error) {
 			throw error

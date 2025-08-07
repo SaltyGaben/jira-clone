@@ -7,7 +7,6 @@ type UpdateTicket = Database['public']['Tables']['tickets']['Update']
 type Comment = Tables<'comments'>
 type User = Tables<'users'>
 
-// Add a new type for comments with user data
 type CommentWithUser = Comment & {
 	users: User
 }
@@ -21,7 +20,6 @@ export function useTickets() {
 
 		if (error) {
 			console.error(`Error fetching ticket ${ticketId}:`, error.message)
-			// Re-throw or handle as appropriate for your global error strategy
 			throw error
 		}
 		return data as Ticket
@@ -127,6 +125,5 @@ export function useTickets() {
 }
 
 export const useTicketAdded = () => {
-	// The key 'ticket_added_flag' ensures this state is shared across components
 	return useState('ticket_added_flag', () => 0)
 }

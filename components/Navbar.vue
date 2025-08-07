@@ -54,15 +54,12 @@ const { data: availableBoards } = useAsyncData(
     }
 );
 
-// Separate watchEffect for board selection to ensure it runs after boards are loaded
 watchEffect(() => {
     if (selectedTeamId.value && userStore.boardId && availableBoards.value) {
-        // Check if the stored boardId exists in the available boards
         const boardExists = availableBoards.value.some(board => board.id === userStore.boardId);
         if (boardExists) {
             selectedBoardId.value = userStore.boardId;
         } else {
-            // If the stored board doesn't exist, select the first available board
             selectedBoardId.value = availableBoards.value[0]?.id || null;
         }
     } else if (!selectedTeamId.value || !userStore.boardId) {
@@ -73,7 +70,6 @@ watchEffect(() => {
 watch(selectedTeamId, async (newTeamId) => {
     if (newTeamId) {
         userStore.teamId = newTeamId;
-        // Clear the board selection when team changes - it will be set by the watchEffect
         selectedBoardId.value = null;
     } else {
         selectedBoardId.value = null;
@@ -86,15 +82,12 @@ watch(selectedBoardId, (newBoardId) => {
     }
 });
 
-// Watch for changes in availableBoards to update board selection
 watch(availableBoards, (newBoards) => {
     if (newBoards && newBoards.length > 0 && userStore.boardId) {
-        // Check if the stored boardId exists in the new boards
         const boardExists = newBoards.some(board => board.id === userStore.boardId);
         if (boardExists) {
             selectedBoardId.value = userStore.boardId;
         } else {
-            // If the stored board doesn't exist, select the first available board
             selectedBoardId.value = newBoards[0]?.id || null;
         }
     }
