@@ -4,7 +4,6 @@ type Board = Tables<'boards'>
 
 export function useBoards() {
 	const supabase = useSupabaseClient<Database>()
-	const user = useSupabaseUser()
 
 	const fetchBoardsForTeam = async (teamId: string): Promise<Board[]> => {
 		if (!teamId) {

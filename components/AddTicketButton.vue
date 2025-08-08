@@ -9,7 +9,7 @@ import { statusNames, priorityNames, typeNames } from '~/lib/records'
 import { useTicketAdded, useTickets } from "~/composables/useTickets";
 
 const ticketAddedFlag = useTicketAdded();
-const { getEpicTickets, saveTicket } = useTickets()
+const { saveTicket } = useTickets()
 const user = useSupabaseUser()
 const userStore = useUserStore()
 
@@ -69,19 +69,8 @@ const onSubmitTicket = (async (values: any) => {
 const { useTeamMembersData } = useTeamMembers()
 const { data: initialTeamMembers } = await useTeamMembersData()
 
-const { data: initialEpicTickets } = await useAsyncData(
-    `epic-tickets`,
-    async () => {
-        try {
-            return await getEpicTickets()
-        } catch (error: any) {
-            if (error.statusCode === 404) {
-                throw createError({ statusCode: 404, statusMessage: `Epics not found`, fatal: true });
-            }
-            throw createError({ statusCode: 500, statusMessage: error.message, fatal: true });
-        }
-    }
-)
+const { useEpicTicketsData } = useEpicTickets()
+const { data: initialEpicTickets } = await useEpicTicketsData()
 
 watchEffect(() => {
     epicTickets.value = initialEpicTickets.value ?? []

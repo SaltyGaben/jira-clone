@@ -12,14 +12,14 @@ import { tryCatch } from '~/lib/utils'
 const route = useRoute()
 const router = useRouter()
 const user = useSupabaseUser()
-const { getTicketById, getTicketByDbId, getComments, saveComment, updateTicket, getEpicTickets } = useTickets()
+const { getTicketById, getTicketByDbId, getComments, saveComment, updateTicket } = useTickets()
 const { getUserById } = useUsers()
 
 const ticketId = route.params.id as string
 const isEditing = ref(false)
 
 definePageMeta({
-    layout: 'ticket',
+    layout: 'ticket'
 })
 
 type Ticket = Tables<'tickets'>
@@ -29,10 +29,10 @@ type CommentWithUser = Comment & {
     users: User
 }
 type InsertComment = Database['public']['Tables']['comments']['Insert']
-type TicketStatus = Enums<"ticket_status">
-type TicketPriority = Enums<"ticket_priority">
+type TicketStatus = Enums<'ticket_status'>
+type TicketPriority = Enums<'ticket_priority'>
 
-const ticketStatuses: TicketStatus[] = ["todo", "in_progress", "in_review", "done"]
+const ticketStatuses: TicketStatus[] = ['todo', 'in_progress', 'in_review', 'done']
 const ticketPriorities: TicketPriority[] = ['low', 'medium', 'high', 'critical']
 
 const ticket = ref<Ticket>()
@@ -43,18 +43,15 @@ const createdByUser = ref('')
 const teamMemberList = ref<User[]>([])
 const epicTickets = ref<Ticket[]>([])
 
-const { data: initialTicket } = await useAsyncData(
-    `ticket-${ticketId}`,
-    async () => {
-        const { data, error } = await tryCatch(getTicketById(ticketId))
-        if (error) {
-            toast.error('Failed to fetch ticket information', {
-                description: (error as any)?.message,
-            })
-        }
-        return data ?? null
+const { data: initialTicket } = await useAsyncData(`ticket-${ticketId}`, async () => {
+    const { data, error } = await tryCatch(getTicketById(ticketId))
+    if (error) {
+        toast.error('Failed to fetch ticket information', {
+            description: (error as any)?.message
+        })
     }
-)
+    return data ?? null
+})
 
 const { data: initialTicketComments } = await useAsyncData(
     'comments',
@@ -66,11 +63,10 @@ const { data: initialTicketComments } = await useAsyncData(
         const { data, error } = await tryCatch(getComments(ticket.value.id))
         if (error) {
             toast.error('Failed to fetch comments', {
-                description: (error as any)?.message,
+                description: (error as any)?.message
             })
         }
         return data ?? []
-
     },
     {
         immediate: false,
@@ -79,19 +75,8 @@ const { data: initialTicketComments } = await useAsyncData(
     }
 )
 
-const { data: initialEpicTickets } = await useAsyncData(
-    'epic-tickets',
-    async () => {
-
-        const { data, error } = await tryCatch(getEpicTickets())
-        if (error) {
-            toast.error('Failed to fetch epic tickets', {
-                description: (error as any)?.message,
-            })
-        }
-        return data ?? []
-    }
-)
+const { useEpicTicketsData } = useEpicTickets()
+const { data: initialEpicTickets } = await useEpicTicketsData()
 
 const { useTeamMembersData } = useTeamMembers()
 const { data: teamMembers } = await useTeamMembersData()
@@ -124,15 +109,17 @@ watch(
     { immediate: true }
 )
 
-const ticketSchema = toTypedSchema(z.object({
-    title: z.string().min(1, 'Title is required'),
-    description: z.string().max(200, 'Maximum of 200 characters allowed').optional().nullable(),
-    status: z.enum(['todo', 'in_progress', 'in_review', 'done']),
-    priority: z.enum(['low', 'medium', 'high', 'critical']),
-    epic: z.string().optional().nullable(),
-    points: z.number().optional().nullable(),
-    assignee: z.string().optional().nullable(),
-}))
+const ticketSchema = toTypedSchema(
+    z.object({
+        title: z.string().min(1, 'Title is required'),
+        description: z.string().max(200, 'Maximum of 200 characters allowed').optional().nullable(),
+        status: z.enum(['todo', 'in_progress', 'in_review', 'done']),
+        priority: z.enum(['low', 'medium', 'high', 'critical']),
+        epic: z.string().optional().nullable(),
+        points: z.number().optional().nullable(),
+        assignee: z.string().optional().nullable()
+    })
+)
 
 const ticketForm = useForm({
     validationSchema: ticketSchema,
@@ -149,7 +136,7 @@ watchEffect(() => {
             status: ticket.value.ticket_status,
             priority: ticket.value.ticket_priority || 'medium',
             assignee: ticket.value.assigned_user || '',
-            points: ticket.value.story_points || null,
+            points: ticket.value.story_points || null
         })
     }
 })
@@ -161,8 +148,7 @@ const onSubmitComment = async () => {
         return
     }
 
-    const comment: InsertComment =
-    {
+    const comment: InsertComment = {
         content: commentText.value,
         user_id: user.value.id,
         ticket_id: ticket.value?.id
@@ -208,13 +194,13 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
             ticket_priority: values.priority,
             assigned_user: values.assignee || null,
             story_points: values.points,
-            updated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         })
     )
 
     if (error || !data) {
         toast.error('Failed to update ticket', {
-            description: (error as any)?.message,
+            description: (error as any)?.message
         })
         return
     }
@@ -260,10 +246,8 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
                     Cancel
                 </Button>
             </div>
-
         </div>
         <div class="p-4 flex flex-row w-full gap-4">
-
             <div class="flex flex-col gap-4 w-full">
                 <Card>
                     <CardHeader>
@@ -281,7 +265,7 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
                                 <FormMessage />
                             </FormItem>
                         </FormField>
-                        <p v-else class="text-lg ">
+                        <p v-else class="text-lg">
                             {{ ticket ? ticket.description : 'No description for ticket' }}
                         </p>
                     </CardContent>
@@ -353,8 +337,19 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
                                     </FormItem>
                                 </FormField>
                                 <span v-else class="text-sm">{{ ticket?.ticket_status ?
-                                    statusNames[ticket.ticket_status] :
-                                    'No status' }}</span>
+                                    statusNames[ticket.ticket_status] : 'No status' }}</span>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <Label class="font-semibold text-muted-foreground">Points</Label>
+                                <FormField v-if="isEditing" v-slot="{ componentField }" name="points">
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input type="number" class="w-1/4" v-bind="componentField" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                </FormField>
+                                <span v-else class="text-sm">{{ ticket?.story_points ?? 'No Points' }}</span>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <Label class="font-semibold text-muted-foreground">Epic</Label>
@@ -402,14 +397,12 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
                                     </FormItem>
                                 </FormField>
                                 <span v-else class="text-sm">{{ ticket?.ticket_priority ?
-                                    priorityNames[ticket.ticket_priority]
-                                    :
-                                    'No priority' }}</span>
+                                    priorityNames[ticket.ticket_priority] : 'No priority' }}</span>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <Label class="font-semibold text-muted-foreground">Type</Label>
-                                <span class="text-sm">{{ ticket?.ticket_type ? typeNames[ticket.ticket_type] :
-                                    'No type' }}</span>
+                                <span class="text-sm">{{ ticket?.ticket_type ? typeNames[ticket.ticket_type] : 'No type'
+                                    }}</span>
                             </div>
                         </div>
                         <Separator class="my-4" />
@@ -435,13 +428,13 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
                                         </Select>
                                     </FormItem>
                                 </FormField>
-                                <span v-else class="text-sm">{{ ticket?.assigned_user ? assigneeName
-                                    : 'No assignee' }}</span>
+                                <span v-else class="text-sm">{{ ticket?.assigned_user ? assigneeName : 'No assignee'
+                                    }}</span>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <Label class="font-semibold text-muted-foreground">Assigned by</Label>
-                                <span class="text-sm">{{ ticket?.created_by_user ? createdByName
-                                    : 'No assignee' }}</span>
+                                <span class="text-sm">{{ ticket?.created_by_user ? createdByName : 'No assignee'
+                                    }}</span>
                             </div>
                         </div>
                     </CardContent>
