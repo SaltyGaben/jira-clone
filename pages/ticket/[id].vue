@@ -7,11 +7,12 @@ import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { FileText, Info, MessageSquare, User } from 'lucide-vue-next'
 import { priorityNames, statusNames, typeNames } from '~/lib/records'
+import { tryCatch } from '~/lib/utils'
 
 const route = useRoute()
 const router = useRouter()
 const user = useSupabaseUser()
-const { getTicketById, getComments, saveComment, updateTicket } = useTickets()
+const { getTicketById, getTicketByDbId, getComments, saveComment, updateTicket, getEpicTickets } = useTickets()
 const { getUserById } = useUsers()
 
 const ticketId = route.params.id as string
@@ -35,21 +36,23 @@ const ticketStatuses: TicketStatus[] = ["todo", "in_progress", "in_review", "don
 const ticketPriorities: TicketPriority[] = ['low', 'medium', 'high', 'critical']
 
 const ticket = ref<Ticket>()
+const currentEpicTicket = ref<Ticket | null>(null)
 const ticketComments = ref<CommentWithUser[]>([])
 const assignedUser = ref('')
 const createdByUser = ref('')
 const teamMemberList = ref<User[]>([])
+const epicTickets = ref<Ticket[]>([])
 
 const { data: initialTicket } = await useAsyncData(
     `ticket-${ticketId}`,
     async () => {
-        try {
-            return await getTicketById(ticketId)
-        } catch (error: any) {
+        const { data, error } = await tryCatch(getTicketById(ticketId))
+        if (error) {
             toast.error('Failed to fetch ticket information', {
-                description: error.message,
+                description: (error as any)?.message,
             })
         }
+        return data ?? null
     }
 )
 
@@ -60,19 +63,33 @@ const { data: initialTicketComments } = await useAsyncData(
             return []
         }
 
-        try {
-            return await getComments(ticket.value.id)
-        } catch (error: any) {
+        const { data, error } = await tryCatch(getComments(ticket.value.id))
+        if (error) {
             toast.error('Failed to fetch comments', {
-                description: error.message,
+                description: (error as any)?.message,
             })
         }
+        return data ?? []
 
     },
     {
         immediate: false,
         watch: [() => ticket.value?.id],
         default: () => []
+    }
+)
+
+const { data: initialEpicTickets } = await useAsyncData(
+    'epic-tickets',
+    async () => {
+
+        const { data, error } = await tryCatch(getEpicTickets())
+        if (error) {
+            toast.error('Failed to fetch epic tickets', {
+                description: (error as any)?.message,
+            })
+        }
+        return data ?? []
     }
 )
 
@@ -89,14 +106,29 @@ watchEffect(() => {
     if (teamMembers.value) {
         teamMemberList.value = teamMembers.value
     }
+    if (initialEpicTickets.value) {
+        epicTickets.value = initialEpicTickets.value
+    }
 })
+
+watch(
+    () => ticket.value?.epic_ticket_id,
+    async (epicId) => {
+        if (!epicId) {
+            currentEpicTicket.value = null
+            return
+        }
+        const { data } = await tryCatch(getTicketByDbId(epicId))
+        currentEpicTicket.value = data ?? null
+    },
+    { immediate: true }
+)
 
 const ticketSchema = toTypedSchema(z.object({
     title: z.string().min(1, 'Title is required'),
     description: z.string().max(200, 'Maximum of 200 characters allowed').optional().nullable(),
     status: z.enum(['todo', 'in_progress', 'in_review', 'done']),
     priority: z.enum(['low', 'medium', 'high', 'critical']),
-    type: z.enum(['bug', 'epic', 'task']),
     epic: z.string().optional().nullable(),
     points: z.number().optional().nullable(),
     assignee: z.string().optional().nullable(),
@@ -113,9 +145,9 @@ watchEffect(() => {
         ticketForm.setValues({
             title: ticket.value.title,
             description: ticket.value.description || '',
+            epic: ticket.value.epic_ticket_id || null,
             status: ticket.value.ticket_status,
             priority: ticket.value.ticket_priority || 'medium',
-            type: ticket.value.ticket_type || 'task',
             assignee: ticket.value.assigned_user || '',
             points: ticket.value.story_points || null,
         })
@@ -146,19 +178,13 @@ const onSubmitComment = async () => {
 
 watchEffect(async () => {
     if (ticket.value?.assigned_user) {
-        try {
-            assignedUser.value = (await getUserById(ticket.value.assigned_user)).display_name ?? 'Unknown User'
-        } catch (error) {
-            console.error('Failed to fetch assignee user:', error)
-        }
+        const { data } = await tryCatch(getUserById(ticket.value.assigned_user))
+        assignedUser.value = data?.display_name ?? 'Unknown User'
     }
 
     if (ticket.value?.created_by_user) {
-        try {
-            createdByUser.value = (await getUserById(ticket.value.created_by_user)).display_name ?? 'Unknown User'
-        } catch (error) {
-            console.error('Failed to fetch created by user:', error)
-        }
+        const { data } = await tryCatch(getUserById(ticket.value.created_by_user))
+        createdByUser.value = data?.display_name ?? 'Unknown User'
     }
 })
 
@@ -173,26 +199,29 @@ const createdByName = computed(() => {
 const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
     if (!ticket.value?.id) return
 
-    try {
-        const updatedTicket = await updateTicket(ticket.value.id, {
+    const { data, error } = await tryCatch(
+        updateTicket(ticket.value.id, {
             title: values.title,
             description: values.description || null,
+            epic_ticket_id: values.epic || null,
             ticket_status: values.status,
             ticket_priority: values.priority,
-            ticket_type: values.type,
             assigned_user: values.assignee || null,
             story_points: values.points,
             updated_at: new Date().toISOString(),
         })
+    )
 
-        ticket.value = { ...ticket.value, ...updatedTicket }
-        isEditing.value = false
-        toast.success('Ticket updated successfully')
-    } catch (error: any) {
+    if (error || !data) {
         toast.error('Failed to update ticket', {
-            description: error.message,
+            description: (error as any)?.message,
         })
+        return
     }
+
+    ticket.value = { ...ticket.value, ...data }
+    isEditing.value = false
+    toast.success('Ticket updated successfully')
 })
 </script>
 
@@ -326,6 +355,30 @@ const onSubmitTicket = ticketForm.handleSubmit(async (values) => {
                                 <span v-else class="text-sm">{{ ticket?.ticket_status ?
                                     statusNames[ticket.ticket_status] :
                                     'No status' }}</span>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <Label class="font-semibold text-muted-foreground">Epic</Label>
+                                <FormField v-if="isEditing" v-slot="{ componentField }" name="epic">
+                                    <FormItem>
+                                        <Select v-bind="componentField">
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectGroup>
+                                                    <SelectItem v-for="ticket in epicTickets" :value="ticket.id">
+                                                        {{ ticket.title }}
+                                                    </SelectItem>
+                                                </SelectGroup>
+                                            </SelectContent>
+                                            <FormMessage />
+                                        </Select>
+                                    </FormItem>
+                                </FormField>
+                                <span v-else class="text-sm">{{ currentEpicTicket ? currentEpicTicket.title
+                                    : 'No Epic Assigned' }}</span>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <Label class="font-semibold text-muted-foreground">Priority</Label>

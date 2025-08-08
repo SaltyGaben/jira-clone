@@ -25,6 +25,16 @@ export function useTickets() {
 		return data as Ticket
 	}
 
+	const getTicketByDbId = async (id: string): Promise<Ticket | null> => {
+		const { data, error } = await supabase.from('tickets').select('*').eq('id', id).limit(1).single()
+
+		if (error) {
+			throw error
+		}
+
+		return data as Ticket
+	}
+
 	const getAllTickets = async (): Promise<Ticket[]> => {
 		const { data, error: fetchTeamsError } = await supabase.from('tickets').select('*').eq('board_id', userStore.boardId)
 
@@ -85,8 +95,6 @@ export function useTickets() {
 			throw error
 		}
 
-		console.log('commentData: ', data)
-
 		return data as CommentWithUser[]
 	}
 
@@ -116,6 +124,7 @@ export function useTickets() {
 	return {
 		getAllTickets,
 		getTicketById,
+		getTicketByDbId,
 		getEpicTickets,
 		saveTicket,
 		updateTicket,

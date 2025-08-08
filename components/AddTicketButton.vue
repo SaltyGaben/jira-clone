@@ -54,7 +54,6 @@ const onSubmitTicket = (async (values: any) => {
     }
 
     try {
-        console.log('ticket to save:', ticket);
         await saveTicket(ticket)
     } catch (error: any) {
         if (error.statusCode === 404) {
@@ -65,7 +64,6 @@ const onSubmitTicket = (async (values: any) => {
 
     ticketAddedFlag.value = Date.now();
     isDialogOpen.value = false
-    console.log(ticketAddedFlag.value)
 })
 
 const { useTeamMembersData } = useTeamMembers()

@@ -28,7 +28,6 @@ const updateStatus = async (
 
     const newStatus = data.parent.el.id as TicketStatus
 
-    console.log("ticket: ", ticket)
     if (!ticket || ticket.ticket_status === newStatus) return
 
     try {
@@ -105,7 +104,6 @@ const getTickets = async () => {
                 listsByStatus[ticket.ticket_status].value.push(ticket)
             }
         })
-        console.log('ticket gotten');
     } catch (error) {
         console.error('Failed to load tickets:', error);
     }
@@ -122,8 +120,6 @@ watch(() => userStore.boardId, async (boardId) => {
 
 watch(ticketAddedFlag, async (newValue, oldValue) => {
     if (newValue !== 0) {
-        console.log('get tickets');
-
         await getTickets()
     }
 });
