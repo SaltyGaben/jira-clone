@@ -138,7 +138,7 @@ const logout = async () => {
                 <DropdownMenuContent>
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
+                    <DropdownMenuItem @click="router.push('/profile')">Profile</DropdownMenuItem>
                     <DropdownMenuItem @click="isLogoutDialogOpen = true">
                         Logout
                     </DropdownMenuItem>

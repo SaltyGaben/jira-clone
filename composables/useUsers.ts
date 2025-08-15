@@ -38,9 +38,16 @@ export function useUsers() {
 		return data as Users
 	}
 
+	const useUserData = () =>
+		useAsyncData<Users | null>('user', async () => {
+			if (!user.value?.id) return null
+			return getUserById(user.value.id)
+		})
+
 	return {
 		getTeamMembersFromTeamId,
 		getUserTeams,
-		getUserById
+		getUserById,
+		useUserData
 	}
 }
