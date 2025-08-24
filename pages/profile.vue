@@ -27,7 +27,7 @@ const getUserInitials = (displayName: string): string => {
     if (!displayName) return ''
     const names = displayName.trim().split(' ')
     if (names.length === 1) {
-        return names[0].charAt(0).toUpperCase()
+        return names[0] ? names[0].charAt(0).toUpperCase() : ''
     }
     return (
         names[0].charAt(0).toUpperCase() +
@@ -48,7 +48,7 @@ const getUserInitials = (displayName: string): string => {
                 <h1 class="text-md text-black/60">Manage your account and view your activity</h1>
             </div>
         </div>
-        <div class="p-4 flex flex-row w-full gap-4">
+        <div class="p-4 flex flex-row w-full gap-4 mt-4">
             <Card class="w-full">
                 <CardHeader class="flex flex-row gap-4 items-center">
                     <span
@@ -64,6 +64,27 @@ const getUserInitials = (displayName: string): string => {
                     </div>
                 </CardHeader>
             </Card>
+        </div>
+        <div class="mt-4">
+            <ProfileCards />
+        </div>
+        <div class="px-4 mt-8">
+            <Tabs default-value="assigned" class="w-full">
+                <TabsList  class="w-full">
+                    <TabsTrigger value="assigned" class="w-full">Assigned</TabsTrigger>
+                    <TabsTrigger value="created" class="w-full">Created</TabsTrigger>
+                    <TabsTrigger value="settings" class="w-full">Settings</TabsTrigger>
+                </TabsList>
+                <TabsContent value="assigned">
+                    <AssignedTasksTab />
+                </TabsContent>
+                <TabsContent value="created">
+                    <CreatedTasksTab />
+                </TabsContent>
+                <TabsContent value="settings">
+                    <SettingsTab />
+                </TabsContent>
+            </Tabs>
         </div>
     </div>
 </template>
