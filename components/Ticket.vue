@@ -1,52 +1,25 @@
 <script setup lang="ts">
-import { type Tables, type Enums } from '~/types/database.types'
-import { ref, onMounted, watch } from 'vue'
-import { priorityColor, priorityNames, typeColor, typeNames } from '~/lib/records'
+import { type Tables } from '~/types/database.types'
+import { priorityColor, priorityNames } from '~/lib/records'
 
-const supabase = useSupabaseClient()
 const router = useRouter()
 
 type Ticket = Tables<"tickets">
-type TicketPriority = Enums<'ticket_priority'>
-type TicketType = Enums<'ticket_type'>
+type User = Tables<"users">
 
 interface TicketProps {
     ticket: Ticket
     epicName?: string
+    teamMembers: User[]
 }
 
 const props = defineProps<TicketProps>()
 
-const assignedUser = ref<{ display_name: string | null; email: string | null } | null>(null)
-
-onMounted(async () => {
-    if (props.ticket.assigned_user) {
-        const { data, error } = await supabase
-            .from('users')
-            .select('display_name, email')
-            .eq('id', props.ticket.assigned_user)
-            .single()
-        if (!error && data) {
-            assignedUser.value = data
-        }
+const assignedUser = computed(() => {
+    if (!props.ticket.assigned_user) {
+        return null
     }
-})
-
-watch(() => props.ticket.assigned_user, async (newVal) => {
-    if (newVal) {
-        const { data, error } = await supabase
-            .from('users')
-            .select('display_name, email')
-            .eq('id', newVal)
-            .single()
-        if (!error && data) {
-            assignedUser.value = data
-        } else {
-            assignedUser.value = null
-        }
-    } else {
-        assignedUser.value = null
-    }
+    return props.teamMembers.find(user => user.id === props.ticket.assigned_user) || null
 })
 
 const routeToTicket = (ticketIdString: string | null) => {

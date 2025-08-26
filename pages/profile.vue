@@ -7,34 +7,52 @@ definePageMeta({
 })
 
 type User = Tables<'users'>
+type Ticket = Tables<'tickets'>
 
-const user = useSupabaseUser()
-const supabase = useSupabaseClient()
 const router = useRouter()
+const userStore = useUserStore()
+const user = useSupabaseUser()
 
+const tickets = ref<Ticket[]>([])
 const currentUser = ref<User>()
 
-const { useUserData } = useUsers()
-const { data: intitalUserData } = await useUserData()
+const { getUserById, getTeamMembersFromTeamId } = useUsers()
+const { getAllTickets } = useTickets()
 
-watchEffect(() => {
-    if (intitalUserData.value) {
-        currentUser.value = intitalUserData.value
+onMounted(async () => {
+    if (user.value && user.value?.id) {
+        currentUser.value = await getUserById(user.value.id)
+    }
+    tickets.value = await getAllTickets()
+})
+
+const teamMembers = ref<User[]>([])
+
+watchEffect(async () => {
+    if (userStore.teamId) {
+        teamMembers.value = await getTeamMembersFromTeamId(userStore.teamId)
     }
 })
 
-const getUserInitials = (displayName: string): string => {
-    if (!displayName) return ''
-    const names = displayName.trim().split(' ')
-    if (names.length === 1) {
-        return names[0].charAt(0).toUpperCase()
+const refreshUserData = async () => {
+    if (user.value && user.value?.id) {
+        currentUser.value = await getUserById(user.value.id)
     }
-    return (
-        names[0].charAt(0).toUpperCase() +
-        names[names.length - 1].charAt(0).toUpperCase()
-    )
 }
 
+const getUserInitials = (displayName: string): string => {
+    if (!displayName?.trim()) return ''
+    const names = displayName.trim().split(' ').filter(Boolean)
+    if (names.length === 0) return ''
+    const first = names[0]
+    const last = names[names.length - 1]
+    if (!first) return ''
+    if (names.length === 1) {
+        return first.charAt(0).toUpperCase()
+    }
+    if (!last) return first.charAt(0).toUpperCase()
+    return first.charAt(0).toUpperCase() + last.charAt(0).toUpperCase()
+}
 
 </script>
 
@@ -48,7 +66,7 @@ const getUserInitials = (displayName: string): string => {
                 <h1 class="text-md text-black/60">Manage your account and view your activity</h1>
             </div>
         </div>
-        <div class="p-4 flex flex-row w-full gap-4">
+        <div class="p-4 flex flex-row w-full gap-4 mt-4">
             <Card class="w-full">
                 <CardHeader class="flex flex-row gap-4 items-center">
                     <span
@@ -64,6 +82,27 @@ const getUserInitials = (displayName: string): string => {
                     </div>
                 </CardHeader>
             </Card>
+        </div>
+        <div class="mt-4">
+            <ProfileCards :tickets="tickets" />
+        </div>
+        <div class="px-4 mt-8">
+            <Tabs default-value="assigned" class="w-full gap-0">
+                <TabsList class="w-full rounded-none rounded-t-lg">
+                    <TabsTrigger value="assigned" class="w-full">Assigned</TabsTrigger>
+                    <TabsTrigger value="created" class="w-full">Created</TabsTrigger>
+                    <TabsTrigger value="settings" class="w-full">Settings</TabsTrigger>
+                </TabsList>
+                <TabsContent value="assigned">
+                    <AssignedTasksTab :tickets="tickets" :team-members="teamMembers" />
+                </TabsContent>
+                <TabsContent value="created">
+                    <CreatedTasksTab :tickets="tickets" :team-members="teamMembers" />
+                </TabsContent>
+                <TabsContent value="settings" v-if="currentUser">
+                    <SettingsTab :user-data="currentUser" @user-updated="refreshUserData" />
+                </TabsContent>
+            </Tabs>
         </div>
     </div>
 </template>

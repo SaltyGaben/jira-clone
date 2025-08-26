@@ -10,9 +10,11 @@ const supabase = useSupabaseClient()
 const userStore = useUserStore()
 const ticketAddedFlag = useTicketAdded();
 const { getAllTickets } = useTickets()
+const { getTeamMembersFromTeamId } = useUsers()
 
 type TicketStatus = Enums<"ticket_status">
 type Ticket = Tables<"tickets">
+type User = Tables<"users">
 
 const allTickets = ref<Ticket[]>([])
 
@@ -132,6 +134,16 @@ const getEpicName = (epicId: string | null) => {
     return epicTicket ? epicTicket.title : undefined
 }
 
+const teamMembers = ref<User[]>([])
+watchEffect(async () => {
+    console.log('userStore.teamId', userStore.teamId);
+
+    if (userStore.teamId) {
+        teamMembers.value = await getTeamMembersFromTeamId(userStore.teamId)
+    }
+})
+
+
 </script>
 
 <template>
@@ -148,7 +160,8 @@ const getEpicName = (epicId: string | null) => {
                 <ul :ref="(el) => (listRefs[status].value = el as HTMLElement)" :id="status"
                     class="h-full flex flex-col gap-2">
                     <li v-for="ticket in itemsByStatus[status].value" :key="ticket.id">
-                        <Ticket :ticket="ticket" :epic-name="getEpicName(ticket.epic_ticket_id)" />
+                        <Ticket :ticket="ticket" :epic-name="getEpicName(ticket.epic_ticket_id)"
+                            :team-members="teamMembers" />
                     </li>
                 </ul>
             </CardContent>
