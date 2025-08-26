@@ -12,7 +12,9 @@ type CommentWithUser = Comment & {
 }
 
 export function useTickets() {
+	const { getUserById } = useUsers()
 	const supabase = useSupabaseClient()
+	const user = useSupabaseUser()
 	const userStore = useUserStore()
 
 	const getTicketById = async (ticketId: string): Promise<Ticket | null> => {
@@ -121,6 +123,32 @@ export function useTickets() {
 		return data as CommentWithUser
 	}
 
+	const getTicketAssignedToUser = async (userId: string): Promise<Ticket[]> => {
+		const { data, error } = await supabase.from('tickets').select('*').eq('assigned_user', userId)
+		if (error) {
+			throw error
+		}
+		return data as Ticket[]
+	}
+
+	const useTicketAssignedToUser = () => useAsyncData<Ticket[]>('tickets_assigned_to_user', async () => {
+		if (!user.value?.id) return []
+		return getTicketAssignedToUser(user.value.id)
+	})
+
+	const getAssignedUserForTicket = async (ticketId: string): Promise<User | null> => {
+		const { data: ticketData, error: ticketError } = await supabase
+			.from('tickets')
+			.select('assigned_user')
+			.eq('id', ticketId)
+			.single()
+		if (ticketError) {
+			throw ticketError
+		}
+
+		return ticketData.assigned_user ? getUserById(ticketData.assigned_user) : null
+	}
+
 	return {
 		getAllTickets,
 		getTicketById,
@@ -129,7 +157,10 @@ export function useTickets() {
 		saveTicket,
 		updateTicket,
 		getComments,
-		saveComment
+		saveComment,
+		getTicketAssignedToUser,
+		useTicketAssignedToUser,
+		getAssignedUserForTicket
 	}
 }
 
